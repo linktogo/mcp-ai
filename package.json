@@ -1,9 +1,9 @@
 {
   "type": "module",
   "scripts": {
-    "start" : "node ./mcp-server.js",
+    "start" : "node ./mcp_server.js",
     "inspect": "npx @modelcontextprotocol/inspector",
-    "inspector": "npx @modelcontextprotocol/inspector node ./mcp-server.js"
+    "inspector": "npx @modelcontextprotocol/inspector node ./mcp_server.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
