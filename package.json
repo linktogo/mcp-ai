@@ -1,4 +1,8 @@
 {
+  "name": "lk-ai",
+  "version": "0.1.0",
+  "description": "An intelligent agent project using the Model Context Protocol.",
+  "private": true,
   "type": "module",
   "scripts": {
     "start" : "node ./mcp_server.js",
