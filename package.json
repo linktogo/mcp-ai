@@ -6,14 +6,21 @@
   "type": "module",
   "scripts": {
     "start": "node ./mcp_server.js",
+    "sse": "node ./sse_server.js",
+    "sse:dev": "SSE_PORT=4000 node ./sse_server.js",
     "inspect": "node ./lib/run_inspector.js",
-    "inspector": "node ./lib/run_inspector.js"
+    "inspector": "node ./lib/run_inspector.js",
+    "inspector:sse": "concurrently \"npm run sse:dev\" \"npm run inspector\"",
+    "build:prompts": "node ./scripts/publish_prompts.js --build-only",
+    "publish:prompts": "node ./scripts/publish_prompts.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/inspector": "^1.18.2"
+    "@modelcontextprotocol/inspector": "^1.18.2",
+    "concurrently": "^8.2.2"
   }
 }
