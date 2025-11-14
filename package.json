@@ -5,12 +5,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start" : "node ./mcp_server.js",
-    "inspect": "npx @modelcontextprotocol/inspector",
-    "inspector": "npx @modelcontextprotocol/inspector node ./mcp_server.js"
+    "start": "node ./mcp_server.js",
+    "inspect": "node ./lib/run_inspector.js",
+    "inspector": "node ./lib/run_inspector.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^1.18.2"
   }
 }

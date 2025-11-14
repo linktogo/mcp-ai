@@ -1,0 +1,9 @@
+[
+  {
+    "name": "github",
+    "repo": "https://github.com/github/awesome-copilot.git",
+    "branch": "main",
+    "subdir": "prompts",
+    "prefix": "remote"
+  }
+]
