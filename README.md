@@ -1,173 +1,175 @@
-# LK-AI Project
+# LK-AI — serveur d'agents (MCP)
 
-An MCP (Model Context Protocol) server with dynamic prompt and resource management, supporting both STDIO and HTTP SSE transports. Load prompts from local directories or remote Git repositories with optional prefixing to manage naming collisions.
+LK-AI est une plateforme d'agents construite autour du Model Context Protocol (MCP). Elle charge dynamiquement des "prompts" (fichiers Markdown) et des ressources, et expose des transports STDIO (pour l'inspector / CLI) et HTTP SSE (Server-Sent Events) pour l'intégration en temps réel.
 
-## About The Project
+Ce README a été mis à jour pour décrire les nouvelles commandes et la possibilité de publier les prompts comme une bibliothèque npm.
 
-LK-AI is an intelligent agent platform built on the Model Context Protocol. It provides:
-- **Dynamic Prompt Loading**: Local (`data/prompts/`) and remote Git-based sources.
-- **Resource Management**: Load auxiliary resources (.md, .txt, .json) and optionally export as prompts.
-- **Dual Transports**: STDIO (MCP CLI compatible) and HTTP SSE (Server-Sent Events) for real-time event streaming.
-- **Modular Architecture**: Cleanly separated concerns (prompts, resources, utils) with a factory-based app creation.
+## Points clés
+- Chargement dynamique de prompts locaux (`data/prompts/`) et distants (dépôts Git listés dans `config/prompts_sources.json`).
+- Export automatique des ressources (`.md`, `.txt`, `.json`) en prompts optionnellement.
+- Deux points d'entrée : `mcp_server.js` (STDIO) et `sse_server.js` (HTTP SSE).
+- Script `scripts/publish_prompts.js` pour construire et publier une librairie npm contenant tous les prompts (locaux + distants).
 
-Capabilities are defined by prompts and tools registered in the MCP server; interact via CLI inspector, HTTP REST endpoints, or custom SSE clients.
+---
 
-## Technology Stack
+## Prérequis
 
-*   **Runtime**: Node.js (v18+)
-*   **Core Protocol**: @modelcontextprotocol/sdk – MCP protocol implementation.
-*   **Data Validation**: Zod – Type-safe schema validation.
-*   **HTTP Server**: Node.js built-in http module with Server-Sent Events (SSE).
-*   **Concurrency**: concurrently – Run multiple processes in parallel.
+- Node.js 18+ et npm  
+- Git (pour cloner/puller les prompts distants)
 
-## Getting Started
+## Installation
 
-Follow these instructions to get a local copy up and running.
+```zsh
+git clone https://github.com/linktogo/mcp-ai.git
+cd lk_ai
+npm install
+```
 
-### Prerequisites
+## Scripts utiles (dans `package.json`)
 
-You need to have Node.js (version 18.x or higher recommended) and npm installed on your machine.
+- `npm start` — démarre le serveur MCP en STDIO (utilisable par l'inspector).  
+- `npm run sse` — démarre le serveur SSE (port par défaut 4000).  
+- `npm run sse:dev` — démarre SSE sur le port 4000 (convention dev).  
+- `npm run inspector` — lance l'inspector MCP (wrapper stable).  
+- `npm run inspector:sse` — lance SSE + inspector en parallèle (via `concurrently`).  
+- `npm run build:prompts` — construit le package de prompts dans `dist/<pkg>/` (ne publie pas).  
+- `npm run publish:prompts` — construit puis publie le package (exécute `npm publish` dans `dist/`).
 
-### Installation
+Exemple : build local sans publier
 
-1.  Clone the repository:
-    ```sh
-    git clone https://github.com/linktogo/mcp-ai
-    cd lk_ai
-    ```
+```zsh
+npm run build:prompts
+# ou en simulation
+DRY_RUN=1 npm run publish:prompts
+```
 
-2.  Install NPM packages:
-    ```sh
-    npm install
-    ```
+Pour publier réellement : assurez-vous d'être connecté à npm (`npm login`) et d'avoir les droits sur le nom de package souhaité. Vous pouvez surcharger le nom/version/visibilité via les variables d'environnement :
 
-### Running the Application
+- `PROMPTS_PACKAGE_NAME` (ex: `@scope/lk-ai-prompts`)  
+- `PROMPTS_PACKAGE_VERSION` (ex: `1.2.3`)  
+- `NPM_PUBLISH_ACCESS` (ex: `public`)
 
-The project provides multiple ways to run the server:
+Exemple de publication :
 
-#### 1. STDIO MCP Server (CLI-compatible)
-```sh
+```zsh
+PROMPTS_PACKAGE_NAME=@linktogo/lk-ai-prompts PROMPTS_PACKAGE_VERSION=0.1.0 NPM_PUBLISH_ACCESS=public npm run publish:prompts
+```
+
+Le package généré contient le dossier `data/` avec tous les prompts et un `index.js` ESM qui exporte un mapping { <chemin_sans_.md>: contenu }.
+
+### Importer la librairie de prompts
+
+Après publication, vous pouvez l'installer et l'importer :
+
+```js
+import prompts, { getPrompt, listPrompts } from '@linktogo/lk-ai-prompts';
+console.log(listPrompts());
+console.log(getPrompt('chatmodes/my_prompt'));
+```
+
+Le module exporte par défaut un objet mappant les chemins relatifs dans `data/` vers le texte Markdown.
+
+---
+
+## Lancer les serveurs
+
+STDIO (inspector / CLI) :
+
+```zsh
 npm start
 ```
-Runs the MCP server via STDIO transport. Use with MCP CLI clients or the inspector.
 
-#### 2. HTTP SSE Server
-```sh
+SSE (HTTP) :
+
+```zsh
 npm run sse
-# or with explicit port
-npm run sse:dev    # Listens on http://localhost:4000
-```
-Exposes HTTP endpoints and Server-Sent Events for real-time streaming.
-
-#### 3. SSE + Inspector (Parallel)
-```sh
-npm run dev
-```
-Launches both the SSE server (port 4000) and the interactive MCP inspector simultaneously.
-
-## Usage
-
-### Exploring Tools & Prompts
-
-#### Via Inspector
-```sh
-npm run inspector
-```
-Interactive CLI tool to list all registered tools, prompts, and resources. Test tools directly.
-
-#### Via SSE HTTP Endpoints
-When `npm run sse` or `npm run dev` is running:
-
-**List prompts:**
-```bash
-curl http://localhost:4000/list_dynamic_prompts
+# ou pour dev explicitement sur le port 4000
+npm run sse:dev
 ```
 
-**List resources:**
-```bash
-curl http://localhost:4000/list_resources
+SSE + inspector en parallèle :
+
+```zsh
+npm run inspector:sse
 ```
 
-**Invoke a tool:**
-```bash
-curl -X POST http://localhost:4000/tool/reload_prompts -H 'Content-Type: application/json' -d '{}'
-```
+## Endpoints SSE & REST
 
-**Subscribe to events (SSE):**
-```bash
-curl http://localhost:4000/events
-# Receives: hello, reload_prompts, reload_resources, tool_result events
-```
+- `GET /events` — souscription SSE (envoie des événements du serveur)  
+- `GET /list_dynamic_prompts` — liste les prompts chargés  
+- `GET /list_resources` — liste les ressources  
+- `POST /reload_prompts` — force le rechargement des prompts (local + distants)  
+- `POST /reload_resources` — rechargement des ressources  
+- `POST /tool/:name` — invoque un outil programmatique (body JSON avec paramètres)
 
-### Managing Prompts
+Remarque : certains endpoints peuvent être protégés par authentification (voir ci-dessous).
 
-#### Local Prompts
-Drop `.md` files into `data/prompts/` and they'll be auto-discovered on startup or via `reload_prompts` tool.
+---
 
-**Apply a prefix to local prompts:**
-Edit `config/prompts_config.json`:
-```json
-{
-  "prefixLocal": "myprefix"
-}
-```
-Or set via environment:
-```bash
-PROMPTS_LOCAL_PREFIX=myteam npm start
-```
+## Configuration des prompts distants
 
-#### Remote Prompts (Git-based)
-Configure Git repositories in `config/prompts_sources.json`:
+Déposez un fichier `config/prompts_sources.json` au format JSON. Chaque entrée peut être une chaîne (URL) ou un objet :
+
 ```json
 [
   {
-    "name": "team-prompts",
     "repo": "https://github.com/your-org/prompts-repo.git",
+    "name": "team-prompts",
     "branch": "main",
-    "subdir": "prompts",
     "prefix": "team"
   }
 ]
 ```
 
-Remote repos are cloned into `data/remote_prompts/<name>/` (shallow clone, fast pulls). Use `prefix` to namespace prompts and avoid collisions (e.g., `team_my_prompt.md` if basename is `my_prompt.md`).
+Le script de build copie les dossiers `data/chatmodes`, `data/prompts`, `data/collections`, `data/remote_prompts` et clone/pull les dépôts listés dans `config/prompts_sources.json` sous `dist/<pkg>/data/remote_prompts/`.
 
-**Reload remotes:**
-```bash
-# Via inspector or SSE
-reload_prompts
+---
+
+## Authentification (optionnelle)
+
+L'API SSE et les endpoints HTTP peuvent être protégés. L'auth peut être désactivée via un flag CLI lors du démarrage (option `--no-auth` / `--disable-auth` dans les wrappers) — utile en local.
+
+Modes supportés :
+
+- `static` : utiliser `AUTH_TOKEN` (valeur simple attendue dans l'en-tête `Authorization: Bearer <token>`).  
+- `jwt` : utiliser `AUTH_TYPE=jwt` et définir `JWT_SECRET` pour vérifier des JWTs HS256. Vous pouvez régler `AUTH_LEEWAY` (secondes) pour tolérance d'horloge.
+
+Variables d'environnement utiles :
+
+- `AUTH_TYPE` — `static` ou `jwt` (si non défini et `AUTH_TOKEN` présent, `static` est utilisé)  
+- `AUTH_TOKEN` — token statique  
+- `JWT_SECRET` — secret pour vérifier JWT HS256  
+- `AUTH_LEEWAY` — tolérance en secondes pour la vérification JWT
+
+Exemples :
+
+```zsh
+AUTH_TOKEN=mysupersecrettoken npm run sse
+# ou JWT
+AUTH_TYPE=jwt JWT_SECRET=your_secret npm run sse
 ```
 
-### Managing Resources
+Lorsque l'auth est activée, incluez un header `Authorization: Bearer <token-or-jwt>` dans vos requêtes HTTP.
 
-Drop `.md`, `.txt`, or `.json` files into `data/resources/` (or `data/ressources/`). They're auto-discovered and optionally exported as MCP prompts.
+---
 
-Toggle export via environment:
-```bash
-EXPORT_RESOURCES_AS_PROMPTS=false npm start
-```
+## Dépannage rapide
 
-## Project Structure
+- Si les clones Git échouent, vérifiez l'URL, la branche et les accès (SSH/HTTPS tokens).  
+- Si des prompts ne s'affichent pas, vérifiez `data/` et lancez `reload_prompts` via l'inspector ou l'endpoint HTTP.
 
-```
-.
-├── mcp_server.js           # STDIO MCP entry point
-├── sse_server.js           # HTTP SSE entry point
-├── lib/
-│   ├── mcp_app.js          # MCP factory: creates server + tools
-│   ├── prompts.js          # Dynamic prompt loader (local + remote)
-│   ├── resources.js        # Dynamic resource loader
-│   ├── utils.js            # Shared utilities (sanitizeName, etc.)
-│   └── run_inspector.js    # MCP inspector wrapper
-├── config/
-│   ├── prompts_config.json       # Local prompt prefix config
-│   └── prompts_sources.json      # Remote Git sources config
-├── data/
-│   ├── prompts/            # Local prompts (*.md)
-│   ├── resources/          # Auxiliary resources (*.md, *.txt, *.json)
-│   └── remote_prompts/     # Cached remote Git repos
-└── package.json            # Dependencies & scripts
-```
+---
+
+## Contribuer
+
+1. Ajouter des prompts locaux dans `data/prompts/*.md`.  
+2. Ajouter/mettre à jour des sources distantes dans `config/prompts_sources.json`.  
+3. Exécuter `npm run build:prompts` pour vérifier le package résultant.  
+4. Soumettre une PR.
+
+## Licence
+
+Voir le fichier `LICENSE`.
 
 ## Architecture
 
